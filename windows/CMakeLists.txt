@@ -30,7 +30,6 @@ include(FetchContent)
 FetchContent_Declare(
   zlib
   URL https://zlib.net/fossils/zlib-1.3.1.tar.gz
-  URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
 )
 set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(zlib)
@@ -39,7 +38,6 @@ FetchContent_MakeAvailable(zlib)
 FetchContent_Declare(
   libzip
   URL https://libzip.org/download/libzip-1.10.1.tar.gz
-  URL_HASH SHA256=dc3c8d5b4c8bec293ef12624a64a610b30c4b54b4c658fcf3e9e30dda96a6e68
 )
 set(BUILD_SHARED_LIBS  OFF CACHE BOOL "" FORCE)
 set(BUILD_TOOLS        OFF CACHE BOOL "" FORCE)
