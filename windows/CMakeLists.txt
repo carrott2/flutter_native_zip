@@ -12,50 +12,57 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 # This can be changed to accommodate different builds.
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../src" "${CMAKE_CURRENT_BINARY_DIR}/shared")
 
-
-if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
-  # ARM64: use libs bundled in the repo
-  set(DIR_PREBUILT_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/libs/arm64")
-  message(NOTICE "[native_zip] using bundled ARM64 libraries")
-else()
-  set(PKGNAME native_zip_libs_windows_min_v1)
-  set(myExtLibsPrefix ${CMAKE_BINARY_DIR}/packages_src)
-  set(URL_PREBUILT_LIBS "https://github.com/jakky1/flutter_native_zip/releases/download/v1/${PKGNAME}.tar.gz")
-  set(ZIP_FILE_PREBUILT_LIBS ${myExtLibsPrefix}/${PKGNAME}.tar.gz)
-  set(DIR_PREBUILT_LIBS ${myExtLibsPrefix}/${PKGNAME})
-
-  # download prebuilt libraries
-  set(LIBS_DOWNLOAD_STAMP_FILE ${myExtLibsPrefix}/${PKGNAME}_download.stamp)
-  if (NOT EXISTS ${LIBS_DOWNLOAD_STAMP_FILE})
-    message(NOTICE "[native_zip] downloading prebuilt libraries...")
-    file(DOWNLOAD "${URL_PREBUILT_LIBS}" "${ZIP_FILE_PREBUILT_LIBS}"
-      STATUS download_status
-      LOG download_log
-      SHOW_PROGRESS
-      #EXPECTED_MD5 "abcdef1234567890abcdef1234567890"
-    )
-    list(GET download_status 0 status_code)
-    list(GET download_status 1 status_string)
-    if(NOT status_code EQUAL 0)
-      message(FATAL_ERROR "[native_zip] prebuild libraries download failed: ${status_string}\nLog: ${download_log}")
-    else()
-      message(NOTICE "[native_zip] prebuilt libraries download success.")
-      file(ARCHIVE_EXTRACT INPUT "${ZIP_FILE_PREBUILT_LIBS}" DESTINATION "${myExtLibsPrefix}") # unzip
-      file(TOUCH ${LIBS_DOWNLOAD_STAMP_FILE})
-    endif()
-  else()  
-    # message(NOTICE "[native_zip] prebuilt libraries downloaded before")
-  endif()
+# Static CRT linkage on Windows so native_zip.dll has no MSVC runtime
+# dependency that could conflict with other plugins (e.g. flutter_angle).
+if(MSVC)
+  foreach(flag_var
+    CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+    CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
+    CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+    CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+  endforeach()
 endif()
 
-# add 'include' folder
-target_include_directories(${PROJECT_NAME} PRIVATE ${DIR_PREBUILT_LIBS}/include)
+include(FetchContent)
 
-# link 'lib' files
-target_link_libraries(${PROJECT_NAME} PRIVATE ${DIR_PREBUILT_LIBS}/zlib.lib)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${DIR_PREBUILT_LIBS}/zip.lib)
-#target_link_libraries(${PROJECT_NAME} PRIVATE ${DIR_PREBUILT_LIBS}/lzma.lib)
+# zlib (static)
+FetchContent_Declare(
+  zlib
+  URL https://zlib.net/fossils/zlib-1.3.1.tar.gz
+  URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
+)
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(zlib)
 
+# libzip (static, no shared lib, no tools)
+FetchContent_Declare(
+  libzip
+  URL https://libzip.org/download/libzip-1.10.1.tar.gz
+  URL_HASH SHA256=dc3c8d5b4c8bec293ef12624a64a610b30c4b54b4c658fcf3e9e30dda96a6e68
+)
+set(BUILD_SHARED_LIBS  OFF CACHE BOOL "" FORCE)
+set(BUILD_TOOLS        OFF CACHE BOOL "" FORCE)
+set(BUILD_REGRESS      OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES     OFF CACHE BOOL "" FORCE)
+set(BUILD_DOC          OFF CACHE BOOL "" FORCE)
+set(ENABLE_LZMA        OFF CACHE BOOL "" FORCE)
+set(ENABLE_ZSTD        OFF CACHE BOOL "" FORCE)
+set(ENABLE_BZIP2       OFF CACHE BOOL "" FORCE)
+set(LIBZIP_DO_INSTALL  OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(libzip)
+
+# add 'include' folders for zlib and libzip headers.
+# Both source and binary dirs are needed: source for the public headers,
+# binary for generated headers (zconf.h for zlib, zipconf.h for libzip).
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${zlib_SOURCE_DIR}
+  ${zlib_BINARY_DIR}
+  ${libzip_SOURCE_DIR}/lib
+  ${libzip_BINARY_DIR}/lib
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE zlibstatic zip)
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
@@ -64,11 +71,5 @@ set(native_zip_bundled_libraries
   # Defined in ../src/CMakeLists.txt.
   # This can be changed to accommodate different builds.
   $<TARGET_FILE:native_zip>
-
-  # Jacky, copy dlls to exe dir  
-  ${DIR_PREBUILT_LIBS}/zlib.dll 
-  ${DIR_PREBUILT_LIBS}/zip.dll
-  # ${DIR_PREBUILT_LIBS}/liblzma.dll
-
   PARENT_SCOPE
 )
