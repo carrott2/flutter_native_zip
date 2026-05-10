@@ -38,28 +38,28 @@ if (ANDROID)
 endif()
 
 # prebuilt static libraries (built with /MD to match Flutter's CRT)
-if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
-  set(PREBUILT_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/arm64/lib")
-  message(NOTICE "[native_zip] using ARM64 prebuilt libraries")
-else()
-  set(PREBUILT_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/x64/lib")
-  message(NOTICE "[native_zip] using x64 prebuilt libraries")
-endif()
+if(WIN32)
+  if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+    set(PREBUILT_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/arm64/lib")
+    message(NOTICE "[native_zip] using ARM64 prebuilt libraries")
+  else()
+    set(PREBUILT_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/x64/lib")
+    message(NOTICE "[native_zip] using x64 prebuilt libraries")
+  endif()
 
-set(PREBUILT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/include")
+  set(PREBUILT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/include")
 
-target_include_directories(native_zip PUBLIC
-  ${PREBUILT_INCLUDE}
-)
+  target_include_directories(native_zip PUBLIC
+    ${PREBUILT_INCLUDE}
+  )
 
-# Link zlib and libzip statically
-# dependency that could fail to load alongside other plugins (e.g. flutter_angle).
-target_link_libraries(native_zip PRIVATE
-  ${PREBUILT_LIBS}/zlibstatic.lib
-  ${PREBUILT_LIBS}/zip.lib
-)
+  # Link zlib and libzip statically
+  # dependency that could fail to load alongside other plugins (e.g. flutter_angle).
+  target_link_libraries(native_zip PRIVATE
+    ${PREBUILT_LIBS}/zlibstatic.lib
+    ${PREBUILT_LIBS}/zip.lib
+  )
 
-# Suppress LNK4098 warning caused by zip.lib (built with /MD) pulling in MSVCRT
-if(MSVC)
+  # Suppress LNK4098 warning caused by zip.lib (built with /MD) pulling in MSVCRT
   target_link_options(native_zip PRIVATE /NODEFAULTLIB:MSVCRT)
 endif()
