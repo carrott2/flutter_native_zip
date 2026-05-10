@@ -60,6 +60,10 @@ if(WIN32)
     ${PREBUILT_LIBS}/zip.lib
   )
 
-  # Suppress LNK4098 warning caused by zip.lib (built with /MD) pulling in MSVCRT
-  target_link_options(native_zip PRIVATE /NODEFAULTLIB:MSVCRT)
+  # Exclude static CRT variants to suppress LNK4098, but keep MSVCRT (dynamic CRT)
+  target_link_options(native_zip PRIVATE
+    /NODEFAULTLIB:LIBCMT
+    /NODEFAULTLIB:LIBCMTD
+    /NODEFAULTLIB:MSVCRTD
+  )
 endif()
