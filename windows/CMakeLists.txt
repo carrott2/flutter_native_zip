@@ -12,56 +12,6 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 # This can be changed to accommodate different builds.
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../src" "${CMAKE_CURRENT_BINARY_DIR}/shared")
 
-# Static CRT linkage on Windows so native_zip.dll has no MSVC runtime
-# dependency that could conflict with other plugins (e.g. flutter_angle).
-if(MSVC)
-  foreach(flag_var
-    CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-    CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
-    CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-    CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-    string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-  endforeach()
-endif()
-
-include(FetchContent)
-
-# zlib (static)
-FetchContent_Declare(
-  zlib
-  URL https://zlib.net/fossils/zlib-1.3.1.tar.gz
-)
-set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(zlib)
-
-# libzip (static, no shared lib, no tools)
-FetchContent_Declare(
-  libzip
-  URL https://libzip.org/download/libzip-1.10.1.tar.gz
-)
-set(BUILD_SHARED_LIBS  OFF CACHE BOOL "" FORCE)
-set(BUILD_TOOLS        OFF CACHE BOOL "" FORCE)
-set(BUILD_REGRESS      OFF CACHE BOOL "" FORCE)
-set(BUILD_EXAMPLES     OFF CACHE BOOL "" FORCE)
-set(BUILD_DOC          OFF CACHE BOOL "" FORCE)
-set(ENABLE_LZMA        OFF CACHE BOOL "" FORCE)
-set(ENABLE_ZSTD        OFF CACHE BOOL "" FORCE)
-set(ENABLE_BZIP2       OFF CACHE BOOL "" FORCE)
-set(LIBZIP_DO_INSTALL  OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(libzip)
-
-# add 'include' folders for zlib and libzip headers.
-# Both source and binary dirs are needed: source for the public headers,
-# binary for generated headers (zconf.h for zlib, zipconf.h for libzip).
-target_include_directories(${PROJECT_NAME} PRIVATE
-  ${zlib_SOURCE_DIR}
-  ${zlib_BINARY_DIR}
-  ${libzip_SOURCE_DIR}/lib
-  ${libzip_BINARY_DIR}/lib
-)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE zlibstatic zip)
-
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.

@@ -37,12 +37,29 @@ if (ANDROID)
   target_link_options(native_zip PRIVATE "-Wl,-z,max-page-size=16384")
 endif()
 
-# Static CRT linkage on Windows so native_zip.dll has no MSVC runtime
-# dependency that could conflict with other plugins (e.g. flutter_angle).
+# prebuilt static libraries (built with /MD to match Flutter's CRT)
+if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+  set(PREBUILT_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/arm64/lib")
+  message(NOTICE "[native_zip] using ARM64 prebuilt libraries")
+else()
+  set(PREBUILT_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/x64/lib")
+  message(NOTICE "[native_zip] using x64 prebuilt libraries")
+endif()
+
+set(PREBUILT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/../windows/prebuilt/include")
+
+target_include_directories(native_zip PUBLIC
+  ${PREBUILT_INCLUDE}
+)
+
+# Link zlib and libzip statically
+# dependency that could fail to load alongside other plugins (e.g. flutter_angle).
+target_link_libraries(native_zip PRIVATE
+  ${PREBUILT_LIBS}/zlibstatic.lib
+  ${PREBUILT_LIBS}/zip.lib
+)
+
+# Suppress LNK4098 warning caused by zip.lib (built with /MD) pulling in MSVCRT
 if(MSVC)
-  foreach(flag_var
-    CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-    CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-    string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-  endforeach()
+  target_link_options(native_zip PRIVATE /NODEFAULTLIB:MSVCRT)
 endif()
